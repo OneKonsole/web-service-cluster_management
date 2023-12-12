@@ -123,7 +123,7 @@ func GetAllClusterList(
 	for _, tenantControlPlane := range kamaji.Items {
 		var cluster Cluster
 		cluster.Name = tenantControlPlane.GetName()
-		cluster.Status = tenantControlPlane.Status.ControlPlaneEndpoint
+		cluster.Status = string(*tenantControlPlane.Status.Kubernetes.Version.Status)
 		cluster.KubernetesVersion = tenantControlPlane.Spec.Kubernetes.Version
 		cluster.OrderID = tenantControlPlane.GetLabels()["order"]
 
@@ -138,4 +138,19 @@ func GetAllClusterList(
 	fmt.Println(string(jsonClusterList))
 
 	return clusterList, nil
+}
+
+// GetComponents returns a list of components for a specific cluster
+func GetComponents(
+	ctx context.Context,
+	clientSet *kubernetes.Clientset,
+	clientName string,
+	clusterName string,
+) (ControlPlaneElementList, error) {
+	var controlPlaneElementList ControlPlaneElementList
+
+	// Get all tenantcontrolplanes.kamaji.clastix.io CRs in the cluster filtered by clientName label
+	clientSet.CoreV1().Pods(clientName).Get()
+
+	return controlPlaneElementList, nil
 }
