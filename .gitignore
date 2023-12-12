@@ -16,7 +16,9 @@
 
 # Local test resources directory
 local-test/
-
+config
+# Docker compose not ready 
+compose.yaml 
 # Dependency directories (remove the comment below to include it)
 vendor/
 
