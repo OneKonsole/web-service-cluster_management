@@ -6,10 +6,13 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/oneKonsole/web-service-cluster_management/internal/controllers"
+	handler "github.com/oneKonsole/web-service-cluster_management/internal/controllers/handlers"
+	repository "github.com/oneKonsole/web-service-cluster_management/internal/repositories"
+	service "github.com/oneKonsole/web-service-cluster_management/internal/services"
+	usecase "github.com/oneKonsole/web-service-cluster_management/internal/usecases"
+	"github.com/oneKonsole/web-service-cluster_management/internal/utils"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Arguments struct {
@@ -52,41 +55,26 @@ func main() {
 			os.Exit(1)
 		}
 	case "kubeConfig":
-		clientSet, err = GetKubernetesClientset()
+		clientSet, err = utils.GetKubernetesClientsetFromFilePath(arguments.KubeConfigPath)
 		if err != nil {
 			fmt.Println("Error creating Kubernetes client: ", err)
 			os.Exit(1)
 		}
 	}
 
-	// Create a new KubeController
-	kubeController := controllers.KubeController{
-		ClientSet: clientSet,
-	}
+	// TODO; Externalize this to a config file or environment variable (see dependency injection as wire and viper for the config file)
+	// Initialize config
+	clusterManager := service.NewKubernetesClusterManager(clientSet)
+	clusterRepository := repository.NewClusterDatabase(clientSet, clusterManager)
+	clusterUseCase := usecase.NewClusterUseCase(clusterRepository)
+	clusterHandler := handler.NewClusterHandler(clusterUseCase)
 
-	app.Get("/:client", kubeController.GetClusters)
+	app.Get("/:client", clusterHandler.FindByClientName)
 	//TODO: Restrict access to this endpoint for admin users only
-	app.Get("/", kubeController.GetAllClusters)
+	app.Get("/", clusterHandler.FindAll)
+	app.Get("/:client/:cluster/kubeconfig", clusterHandler.GetKubeconfig)
+	app.Get("/:client/:cluster", clusterHandler.FindByClientNameAndClusterName)
+	app.Delete("/:client/:cluster", clusterHandler.Delete)
 
 	app.Listen(":3000")
-}
-
-// GetKubernetesClientset returns a Kubernetes clientset using the kubeconfig file at the default location.
-func GetKubernetesClientset() (*kubernetes.Clientset, error) {
-	// Get the kubeconfig file path from the default location
-	kubeconfig := arguments.KubeConfigPath
-
-	// Use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return nil, fmt.Errorf("error building kubeconfig: %v", err)
-	}
-
-	// Create a Kubernetes clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("error creating Kubernetes client: %v", err)
-	}
-
-	return clientset, nil
 }
