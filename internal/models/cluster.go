@@ -1,20 +1,25 @@
 package models
 
 type Cluster struct {
-	Name                    string                `json:"name"`
-	Status                  string                `json:"status"`
-	ControlPlaneElementList []ControlPlaneElement `json:"controlPlaneElements"`
-	NodeList                []Node                `json:"nodes"`
-	KubernetesVersion       string                `json:"kubernetesVersion"`
-	OrderID                 string                `json:"orderId"`
+	Name              string       `json:"name"`
+	Status            string       `json:"status"`
+	ControlPlane      ControlPlane `json:"controlPlane"`
+	NodeList          []Node       `json:"nodes"`
+	KubernetesVersion string       `json:"kubernetesVersion"`
+	OrderID           string       `json:"orderId"`
 }
 
-type ControlPlaneElement struct {
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	Replicas int    `json:"replicas"`
-	Memory   string `json:"memory"`
-	Cpu      string `json:"cpu"`
+type Element struct {
+	Name                   string `json:"name"`
+	ReadyNumber            int    `json:"readyNumber"`
+	DesiredNumberScheduled int    `json:"desiredNumberScheduled"`
+}
+
+type ControlPlane struct {
+	KonnectivityServer    Element `json:"konnectivity-server"`
+	KubeApiserver         Element `json:"kube-apiserver"`
+	KubeControllerManager Element `json:"kube-controller-manager"`
+	KubeScheduler         Element `json:"kube-scheduler"`
 }
 
 type Node struct {

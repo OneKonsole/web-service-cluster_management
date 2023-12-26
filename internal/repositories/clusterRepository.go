@@ -9,6 +9,7 @@ import (
 	"github.com/oneKonsole/web-service-cluster_management/internal/models"
 	iRepository "github.com/oneKonsole/web-service-cluster_management/internal/repositories/interfaces"
 	iService "github.com/oneKonsole/web-service-cluster_management/internal/services/interfaces"
+	k8sv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -231,6 +232,11 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 		cluster.KubernetesVersion = tenantControlPlane.Spec.Kubernetes.Version
 		cluster.OrderID = tenantControlPlane.GetLabels()["order"]
 
+		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, clusterName)
+		if err != nil {
+			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+		}
+
 		if cluster.Status != "Ready" {
 			return cluster, nil
 		}
@@ -272,11 +278,6 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 			})
 		}
 
-		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
-			continue
-		}
-
 	}
 
 	return cluster, nil
@@ -311,4 +312,64 @@ func (c *clusterDatabase) Delete(ctx context.Context, clientName string, cluster
 	}
 
 	return nil
+}
+
+func (c *clusterDatabase) getControlPlane(ctx context.Context, clientName string, clusterName string) (models.ControlPlane, error) {
+	var controlPlaneElement models.ControlPlane
+
+	// Get all tenantcontrolplanes.kamaji.clastix.io CRs in the cluster filtered by clientName label
+	// TODO ; filter
+	response, err := c.clientsetClusterMaster.CoreV1().Pods(clientName).List(ctx, v1.ListOptions{})
+	// "kamaji.clastix.io/name=" + clusterName + ",
+
+	fmt.Println("Pods getted : " + string(len(response.Items)))
+
+	if err != nil {
+		return controlPlaneElement, err
+	}
+
+	konnectivityReadyNumber, konnectivityDesiredNumber := getElementReadyAndDesiredNumber(response, "konnectivity-server")
+	kubeApiserverReadyNumber, kubeApiserverDesiredNumber := getElementReadyAndDesiredNumber(response, "kube-apiserver")
+	kubeControllerManagerReadyNumber, kubeControllerManagerDesiredNumber := getElementReadyAndDesiredNumber(response, "kube-controller-manager")
+	kubeSchedulerReadyNumber, kubeSchedulerDesiredNumber := getElementReadyAndDesiredNumber(response, "kube-scheduler")
+
+	controlPlaneElement = models.ControlPlane{
+		KonnectivityServer: models.Element{
+			Name:                   "konnectivity-server",
+			DesiredNumberScheduled: konnectivityDesiredNumber,
+			ReadyNumber:            konnectivityReadyNumber,
+		},
+		KubeApiserver: models.Element{
+			Name:                   "kube-apiserver",
+			DesiredNumberScheduled: kubeApiserverDesiredNumber,
+			ReadyNumber:            kubeApiserverReadyNumber,
+		},
+		KubeControllerManager: models.Element{
+			Name:                   "kube-controller-manager",
+			DesiredNumberScheduled: kubeControllerManagerDesiredNumber,
+			ReadyNumber:            kubeControllerManagerReadyNumber,
+		},
+		KubeScheduler: models.Element{
+			Name:                   "kube-scheduler",
+			DesiredNumberScheduled: kubeSchedulerDesiredNumber,
+			ReadyNumber:            kubeSchedulerReadyNumber,
+		},
+	}
+
+	return controlPlaneElement, nil
+}
+
+func getElementReadyAndDesiredNumber(podList *k8sv1.PodList, containerName string) (int, int) {
+	readyNumber, desiredNumber := 0, 0
+	for _, pod := range podList.Items {
+		for _, container := range pod.Status.ContainerStatuses {
+			if container.Ready && container.Name == containerName {
+				readyNumber++
+				desiredNumber++
+			} else if !container.Ready && container.Name == containerName {
+				desiredNumber++
+			}
+		}
+	}
+	return readyNumber, desiredNumber
 }
