@@ -1,11 +1,9 @@
-name: CI/CD
+name: Publish Docker Image on Push to Main
 
 on:
   push:
     branches:
       - "main"
-      - "feature/test-ci-cd"
-
 
 jobs:
   build:
@@ -24,7 +22,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: onekonsole/web-service-cluster_management:latest
+          tags: |
+            onekonsole/web-service-cluster_management:latest
 
   # deploy:
   #   needs: build
