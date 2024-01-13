@@ -55,6 +55,13 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 		cluster.KubernetesVersion = tenantControlPlane.Spec.Kubernetes.Version
 		cluster.OrderID = tenantControlPlane.GetLabels()["order"]
 
+		clientName := tenantControlPlane.GetLabels()["client"]
+
+		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, cluster.Name)
+		if err != nil {
+			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+		}
+
 		if cluster.Status != "Ready" {
 			clusterList = append(clusterList, cluster)
 			continue
@@ -143,6 +150,11 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 		cluster.KubernetesVersion = tenantControlPlane.Spec.Kubernetes.Version
 		cluster.OrderID = tenantControlPlane.GetLabels()["order"]
 
+		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, cluster.Name)
+		if err != nil {
+			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+		}
+
 		if cluster.Status != "Ready" {
 			clusterList = append(clusterList, cluster)
 			continue
@@ -185,12 +197,6 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 				Ready: isReady,
 				Roles: roles,
 			})
-		}
-
-		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
-			clusterList = append(clusterList, cluster)
-			continue
 		}
 
 		clusterList = append(clusterList, cluster)
