@@ -37,7 +37,7 @@ func main() {
 	// Change log level to debug
 	app := fiber.New(
 		fiber.Config{
-			Prefork: false, // When set to true, this will spawn multiple Go processes listening on the same port.
+			Prefork: true, // When set to true, this will spawn multiple Go processes listening on the same port.
 		},
 	)
 
