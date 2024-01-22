@@ -136,6 +136,7 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error getting cluster list for client "+clientName+": ", err)
 		return clusterList, err
 	}
 
@@ -221,6 +222,7 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error getting cluster "+clusterName+": ", err)
 		return cluster, err
 	}
 
