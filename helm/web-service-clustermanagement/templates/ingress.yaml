@@ -16,7 +16,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ $fullName }}
-  {{- with .Values.ingress.labels }}}
+  {{- with .Values.ingress.labels }}
   labels:
     {{- toYaml . | nindent 4 }}
   {{- end }}

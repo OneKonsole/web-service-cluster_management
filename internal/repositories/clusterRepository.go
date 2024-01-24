@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	kamaji "github.com/clastix/kamaji/api/v1alpha1"
+	log "github.com/gofiber/fiber/v2/log"
 	"github.com/oneKonsole/web-service-cluster_management/internal/models"
 	iRepository "github.com/oneKonsole/web-service-cluster_management/internal/repositories/interfaces"
 	iService "github.com/oneKonsole/web-service-cluster_management/internal/services/interfaces"
@@ -38,6 +39,7 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error getting cluster list: ", err)
 		return clusterList, err
 	}
 
@@ -45,6 +47,7 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 	var kamaji kamaji.TenantControlPlaneList
 	err = response.Into(&kamaji)
 	if err != nil {
+		log.Error("Error getting cluster list: ", err)
 		return clusterList, err
 	}
 
@@ -59,7 +62,7 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 
 		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, cluster.Name)
 		if err != nil {
-			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+			log.Error("Error getting control plane elements for cluster "+cluster.Name+": ", err)
 		}
 
 		if cluster.Status != "Ready" {
@@ -71,14 +74,14 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 
 		clientsetTenant, err := c.clusterManager.GetKubernetesClientsetFromSecret(client, cluster.Name, ctx)
 		if err != nil {
-			fmt.Println("Failed to get clientset for cluster " + cluster.Name)
+			log.Error("Error getting clientset for cluster "+cluster.Name+": ", err)
 			clusterList = append(clusterList, cluster)
 			continue
 		}
 
 		nodes, err := clientsetTenant.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
+			log.Error("Error getting nodes for cluster "+cluster.Name+": ", err)
 			clusterList = append(clusterList, cluster)
 			continue
 		}
@@ -109,7 +112,7 @@ func (c *clusterDatabase) FindAll(ctx context.Context) ([]models.Cluster, error)
 		}
 
 		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
+			log.Error("Error getting nodes for cluster "+cluster.Name+": ", err)
 			clusterList = append(clusterList, cluster)
 			continue
 		}
@@ -133,6 +136,7 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error getting cluster list for client "+clientName+": ", err)
 		return clusterList, err
 	}
 
@@ -152,7 +156,7 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 
 		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, cluster.Name)
 		if err != nil {
-			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+			log.Error("Error getting control plane elements for cluster "+cluster.Name+": ", err)
 		}
 
 		if cluster.Status != "Ready" {
@@ -162,14 +166,14 @@ func (c *clusterDatabase) FindByClientName(ctx context.Context, clientName strin
 
 		clientsetTenant, err := c.clusterManager.GetKubernetesClientsetFromSecret(clientName, cluster.Name, ctx)
 		if err != nil {
-			fmt.Println("Failed to get clientset for cluster " + cluster.Name)
+			log.Error("Error getting clientset for cluster "+cluster.Name+": ", err)
 			clusterList = append(clusterList, cluster)
 			continue
 		}
 
 		nodes, err := clientsetTenant.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
+			log.Error("Error getting nodes for cluster "+cluster.Name+": ", err)
 			clusterList = append(clusterList, cluster)
 			continue
 		}
@@ -218,6 +222,7 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error getting cluster "+clusterName+": ", err)
 		return cluster, err
 	}
 
@@ -240,7 +245,7 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 
 		cluster.ControlPlane, err = c.getControlPlane(ctx, clientName, clusterName)
 		if err != nil {
-			fmt.Println("failed to get control plane elements for cluster " + cluster.Name)
+			log.Error("Error getting control plane elements for cluster "+cluster.Name+": ", err)
 		}
 
 		if cluster.Status != "Ready" {
@@ -249,13 +254,13 @@ func (c *clusterDatabase) FindByClientNameAndClusterName(ctx context.Context, cl
 
 		clientsetTenant, err := c.clusterManager.GetKubernetesClientsetFromSecret(clientName, cluster.Name, ctx)
 		if err != nil {
-			fmt.Println("Failed to get clientset for cluster " + cluster.Name)
+			log.Error("Error getting clientset for cluster "+cluster.Name+": ", err)
 			continue
 		}
 
 		nodes, err := clientsetTenant.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 		if err != nil {
-			fmt.Println("Failed to get nodes for cluster " + cluster.Name)
+			log.Error("Error getting nodes for cluster "+cluster.Name+": ", err)
 			continue
 		}
 
@@ -293,7 +298,7 @@ func (c *clusterDatabase) GetKubeConfig(ctx context.Context, clientName string, 
 	// Get the kubeconfig secret for the cluster
 	kubeConfigSecret, err := c.clientsetClusterMaster.CoreV1().Secrets(clientName).Get(ctx, clusterName+"-admin-kubeconfig", v1.GetOptions{})
 	if err != nil {
-		fmt.Println("Failed to get kubeconfig for cluster " + clusterName)
+		log.Error("Failed to get kubeconfig for cluster " + clusterName)
 		return "", err
 	}
 
@@ -314,6 +319,7 @@ func (c *clusterDatabase) Delete(ctx context.Context, clientName string, cluster
 	// Check if there is an error
 	err := response.Error()
 	if err != nil {
+		log.Error("Error deleting cluster "+clusterName+": ", err)
 		return err
 	}
 
@@ -324,13 +330,11 @@ func (c *clusterDatabase) getControlPlane(ctx context.Context, clientName string
 	var controlPlaneElement models.ControlPlane
 
 	// Get all tenantcontrolplanes.kamaji.clastix.io CRs in the cluster filtered by clientName label
-	// TODO ; filter
-	response, err := c.clientsetClusterMaster.CoreV1().Pods(clientName).List(ctx, v1.ListOptions{})
-	// "kamaji.clastix.io/name=" + clusterName + ",
-
-	fmt.Println("Pods getted : " + string(len(response.Items)))
-
+	response, err := c.clientsetClusterMaster.CoreV1().Pods(clientName).List(ctx, v1.ListOptions{
+		LabelSelector: "kamaji.clastix.io/name=" + clusterName,
+	})
 	if err != nil {
+		log.Error("Error getting pods for cluster "+clusterName+": ", err)
 		return controlPlaneElement, err
 	}
 
