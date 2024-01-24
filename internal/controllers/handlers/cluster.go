@@ -52,6 +52,7 @@ func (h *ClusterHandler) GetKubeconfig(ctx *fiber.Ctx) error {
 	client := ctx.Params("client")
 	cluster := ctx.Params("cluster")
 
+
 	format := ctx.Query("format")
 
 	kubeConfig, err := h.clusterUseCase.GetKubeConfig(ctx.Context(), client, cluster)
@@ -69,7 +70,7 @@ func (h *ClusterHandler) GetKubeconfig(ctx *fiber.Ctx) error {
 		ctx.Set("Content-Disposition", "attachment; filename="+cluster+"-kubeconfig")
 		return ctx.SendString(kubeConfig)
 	}
-
+  
 	// TODO: return kubeconfig file as attachment instead of json
 	return ctx.JSON(kubeConfig)
 }
